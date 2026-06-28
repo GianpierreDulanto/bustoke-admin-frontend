@@ -37,7 +37,9 @@ type DecodedAccessToken = {
 };
 
 function getAccessTokenExpiresAt(data: BackendAuthResponse) {
-  const parsedExpiresAt = Date.parse(data.accessTokenExpiresAt);
+  const parsedExpiresAt = data.accessTokenExpiresAt
+    ? Date.parse(data.accessTokenExpiresAt)
+    : NaN;
   if (!Number.isNaN(parsedExpiresAt)) return parsedExpiresAt;
 
   const decoded = jwt.decode(data.accessToken) as DecodedAccessToken | null;
@@ -57,7 +59,9 @@ function mapAuthResponseToToken(token: JWT, data: BackendAuthResponse): JWT {
     accessToken: data.accessToken,
     accessTokenExpiresAt: getAccessTokenExpiresAt(data),
     refreshToken: data.refreshToken,
-    refreshTokenExpiresAt: Date.parse(data.refreshTokenExpiresAt),
+    refreshTokenExpiresAt: data.refreshTokenExpiresAt
+      ? Date.parse(data.refreshTokenExpiresAt)
+      : undefined,
     sessionId: data.sessionId,
     error: undefined,
   };
@@ -131,7 +135,9 @@ export const authOptions: NextAuthOptions = {
             accessToken: data.accessToken,
             accessTokenExpiresAt: getAccessTokenExpiresAt(data),
             refreshToken: data.refreshToken,
-            refreshTokenExpiresAt: Date.parse(data.refreshTokenExpiresAt),
+            refreshTokenExpiresAt: data.refreshTokenExpiresAt
+      ? Date.parse(data.refreshTokenExpiresAt)
+      : undefined,
             sessionId: data.sessionId,
             email: data.user?.email ?? payload.email,
             id: data.user?.id ?? payload.sub,
