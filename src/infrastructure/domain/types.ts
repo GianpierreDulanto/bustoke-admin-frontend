@@ -142,6 +142,7 @@ export type Viaje = {
   id: string;
   idRuta: string;
   idBus: string;
+  idChofer: string | null;
   fechaHoraSalida: string;
   fechaHoraLlegada: string;
   estado: EstadoViaje;

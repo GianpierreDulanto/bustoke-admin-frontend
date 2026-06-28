@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useUserRole } from '@/hooks';
 import { Input, Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, Label } from '@/components/ui';
 import { SearchIcon, Plus } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table/data-table';
@@ -12,17 +12,7 @@ import type { TicketSoporte } from '@/infrastructure/domain/types';
 interface Props { data: TicketSoporte[]; onRefresh: () => void }
 
 export function SoporteTable({ data, onRefresh }: Props) {
-  const { data: session } = useSession();
-  const token = session?.user?.accessToken;
-  let isSuperadmin = true;
-  let idAgencia: string | undefined;
-  if (token) {
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      isSuperadmin = payload.rol === 'superadmin';
-      idAgencia = String(payload.id_agencia);
-    } catch {}
-  }
+  const { idAgencia, isSuperadmin } = useUserRole();
 
   const [s, setS] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -66,7 +56,7 @@ export function SoporteTable({ data, onRefresh }: Props) {
     }
   };
 
-  const columns = useSoporteColumns({ isSuperadmin, onDelete: handleDelete });
+  const columns = useSoporteColumns({ isSuperadmin, onDelete: handleDelete, onRefresh });
 
   return (
     <div className="space-y-4">

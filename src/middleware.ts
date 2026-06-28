@@ -20,16 +20,24 @@ export async function middleware(req: NextRequest) {
     if (!isAuth || !token?.accessToken) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
-    const backendUrl = process.env.NEXT_PUBLIC_URL_API || 'http://localhost:5000';
+    const backendUrl = process.env.NEXT_PUBLIC_URL_API;
+    if (!backendUrl) {
+      return NextResponse.json(
+        { error: 'NEXT_PUBLIC_URL_API no está configurado en el servidor' },
+        { status: 500 }
+      );
+    }
     const targetPath = req.nextUrl.pathname.replace(/^\/api/, '');
     const url = `${backendUrl}${targetPath}${req.nextUrl.search}`;
     try {
-      const body = req.method === 'GET' || req.method === 'HEAD' ? undefined : await req.text();
+      const hasBody = req.method !== 'GET' && req.method !== 'HEAD';
+      const body = hasBody ? await req.text() : undefined;
+      const contentType = req.headers.get('content-type') ?? (hasBody ? 'application/json' : '');
       const backendRes = await fetch(url, {
         method: req.method,
         headers: {
           Authorization: `Bearer ${token.accessToken}`,
-          'Content-Type': 'application/json',
+          ...(contentType && { 'Content-Type': contentType }),
         },
         body,
       });

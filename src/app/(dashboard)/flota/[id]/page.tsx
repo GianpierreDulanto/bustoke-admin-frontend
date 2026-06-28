@@ -5,8 +5,8 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Badge, Button } from '@/components/ui';
 import { ArrowLeft, Edit, Bus, Building2, CalendarDays } from 'lucide-react';
-import { busRepository, agenciaRepository, viajeRepository, rutaRepository, terminalRepository } from '@/infrastructure/repositories';
-import type { Viaje, Bus as BusType, Agencia, Ruta, Terminal } from '@/infrastructure/domain/types';
+import { busRepository, agenciaRepository, viajeRepository, rutaRepository, terminalRepository, asientoRepository } from '@/infrastructure/repositories';
+import type { Asiento, Viaje, Bus as BusType, Agencia, Ruta, Terminal } from '@/infrastructure/domain/types';
 
 function InfoRow({ label, value }: { label: string; value: string | React.ReactNode }) {
   return (
@@ -24,6 +24,7 @@ export default function BusDetailPage() {
   const [viajes, setViajes] = useState<Viaje[]>([]);
   const [rutas, setRutas] = useState<Ruta[]>([]);
   const [terminales, setTerminales] = useState<Terminal[]>([]);
+  const [asientos, setAsientos] = useState<Asiento[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -33,12 +34,14 @@ export default function BusDetailPage() {
         if (!b) { setLoading(false); return; }
         setBus(b);
 
-        const [ag, vv] = await Promise.all([
+        const [ag, vv, asts] = await Promise.all([
           agenciaRepository.getById(b.idAgencia),
           viajeRepository.list({ id_bus: b.id }),
+          asientoRepository.listByBus(b.id),
         ]);
         setAgencia(ag);
         setViajes(vv);
+        setAsientos(asts);
 
         const rutaIds = [...new Set(vv.map((v) => v.idRuta))];
         if (rutaIds.length > 0) {
@@ -84,12 +87,20 @@ export default function BusDetailPage() {
             <p className="text-sm text-muted-foreground">Detalle de unidad</p>
           </div>
         </div>
-        <Button asChild>
-          <Link href={`/flota/${params.id}/editar`}>
-            <Edit className="size-4" />
-            Editar
-          </Link>
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" asChild>
+            <Link href={`/flota/${params.id}/asientos`}>
+              <Bus className="size-4" />
+              Mapa de asientos
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href={`/flota/${params.id}/editar`}>
+              <Edit className="size-4" />
+              Editar
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -100,7 +111,7 @@ export default function BusDetailPage() {
           </div>
           <InfoRow label="Placa" value={bus.placa} />
           <InfoRow label="Cantidad de Pisos" value={String(bus.cantidadPisos)} />
-          <InfoRow label="Total Asientos" value={String(bus.cantidadPisos * 40)} />
+          <InfoRow label="Total Asientos" value={String(asientos.length)} />
         </div>
 
         <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-6 space-y-4">

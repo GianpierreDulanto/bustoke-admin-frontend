@@ -1,25 +1,15 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button/button';
 import { Badge } from '@/components/ui/badge/badge';
 import { ArrowLeft, Calendar, Eye, Bus as BusIcon } from 'lucide-react';
-import {
-  getRutaById,
-  getViajesByRutaId,
-  getTerminalById,
-  getBusById,
-} from '@/infrastructure/mock/data';
+import { busRepository, rutaRepository, viajeRepository } from '@/infrastructure/repositories';
 import { DataTable, DataTableEmpty } from '@/components/ui';
-import type { Viaje } from '@/infrastructure/domain/types';
+import type { Bus, Ruta, Viaje } from '@/infrastructure/domain/types';
 import type { ColumnDef } from '@tanstack/react-table';
-
-function getBusPlaca(idBus: string): string {
-  const bus = getBusById(idBus);
-  return bus ? bus.placa : '—';
-}
 
 const estadoVariant: Record<string, 'info' | 'warning' | 'success' | 'danger'> = {
   programado: 'info',
@@ -30,13 +20,34 @@ const estadoVariant: Record<string, 'info' | 'warning' | 'success' | 'danger'> =
 
 export default function ViajesRutaPage() {
   const params = useParams<{ id: string }>();
-  const ruta = getRutaById(params.id);
-  const terminalOrigen = ruta ? getTerminalById(ruta.idTerminalOrigen) : undefined;
-  const terminalDestino = ruta ? getTerminalById(ruta.idTerminalDestino) : undefined;
+  const [ruta, setRuta] = useState<Ruta | null>(null);
+  const [viajes, setViajes] = useState<Viaje[]>([]);
+  const [buses, setBuses] = useState<Bus[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [r, vv, bb] = await Promise.all([
+          rutaRepository.getById(params.id),
+          viajeRepository.findByRuta(params.id),
+          busRepository.list(),
+        ]);
+        setRuta(r);
+        setViajes(vv);
+        setBuses(bb);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [params.id]);
+
+  const busesMap = useMemo(() => new Map(buses.map((b) => [b.id, b])), [buses]);
   const rutaLabel = ruta
-    ? `${terminalOrigen?.nombre ?? '?'} → ${terminalDestino?.nombre ?? '?'}`
+    ? `${ruta.terminalOrigenNombre ?? ruta.idTerminalOrigen} → ${ruta.terminalDestinoNombre ?? ruta.idTerminalDestino}`
     : 'Cargando...';
-  const viajes = useMemo(() => getViajesByRutaId(params.id), [params.id]);
 
   const columns = useMemo<ColumnDef<Viaje>[]>(
     () => [
@@ -54,7 +65,7 @@ export default function ViajesRutaPage() {
         id: 'bus',
         header: 'Bus',
         cell: ({ row }) => {
-          const placa = getBusPlaca(row.original.idBus);
+          const placa = busesMap.get(row.original.idBus)?.placa ?? '—';
           return (
             <span className="flex items-center gap-2">
               <BusIcon className="size-4 text-muted-foreground shrink-0" />
@@ -86,8 +97,10 @@ export default function ViajesRutaPage() {
         ),
       },
     ],
-    []
+    [busesMap]
   );
+
+  if (loading) return <div className="p-6 text-muted-foreground">Cargando viajes...</div>;
 
   return (
     <div className="space-y-6">

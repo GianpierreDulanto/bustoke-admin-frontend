@@ -1,19 +1,44 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button/button';
 import { ArrowLeft, MapPin } from 'lucide-react';
-import { getAgenciaById, getTerminalesByAgenciaId, getDistritoById } from '@/infrastructure/mock/data';
+import { agenciaRepository, agenciaTerminalRepository, terminalRepository, ubigeoRepository } from '@/infrastructure/repositories';
 import { DataTable, DataTableEmpty } from '@/components/ui';
-import type { Terminal } from '@/infrastructure/domain/types';
+import type { Agencia, Distrito, Terminal } from '@/infrastructure/domain/types';
 import type { ColumnDef } from '@tanstack/react-table';
 
 export default function TerminalesAgenciaPage() {
   const params = useParams<{ id: string }>();
-  const agencia = getAgenciaById(params.id);
-  const terminales = useMemo(() => getTerminalesByAgenciaId(params.id), [params.id]);
+  const [agencia, setAgencia] = useState<Agencia | null>(null);
+  const [terminales, setTerminales] = useState<Terminal[]>([]);
+  const [distritos, setDistritos] = useState<Distrito[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [a, pivots, allTerminales, ds] = await Promise.all([
+          agenciaRepository.getById(params.id),
+          agenciaTerminalRepository.findByAgencia(params.id),
+          terminalRepository.list(),
+          ubigeoRepository.getDistritos(),
+        ]);
+        const terminalIds = new Set(pivots.map((p) => p.idTerminal));
+        setAgencia(a);
+        setTerminales(allTerminales.filter((t) => terminalIds.has(t.id)));
+        setDistritos(ds);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [params.id]);
+
+  const distritosMap = useMemo(() => new Map(distritos.map((d) => [String(d.id), d])), [distritos]);
 
   const columns = useMemo<ColumnDef<Terminal>[]>(
     () => [
@@ -32,13 +57,15 @@ export default function TerminalesAgenciaPage() {
         id: 'distrito',
         header: 'Distrito',
         cell: ({ row }) => {
-          const d = getDistritoById(row.original.idDistrito);
+          const d = distritosMap.get(String(row.original.idDistrito));
           return <span>{d?.nombre ?? row.original.idDistrito}</span>;
         },
       },
     ],
-    []
+    [distritosMap]
   );
+
+  if (loading) return <div className="p-6 text-muted-foreground">Cargando terminales...</div>;
 
   return (
     <div className="space-y-6">

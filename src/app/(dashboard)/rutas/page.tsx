@@ -1,25 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { toast } from 'sonner';
+import { useUserRole } from '@/hooks';
 import { RutasTable } from '@/features/rutas/components';
 import { rutaRepository, terminalRepository, agenciaRepository } from '@/infrastructure/repositories';
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Input } from '@/components/ui';
 import type { Ruta, Terminal, Agencia } from '@/infrastructure/domain/types';
 
 export default function RutasPage() {
-  const { data: session } = useSession();
-  const token = session?.user?.accessToken;
-  let role: string | undefined;
-  let idAgencia: string | undefined;
-  if (token) {
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      role = payload.rol;
-      idAgencia = String(payload.id_agencia);
-    } catch {}
-  }
-  const isSuperadmin = role === 'superadmin';
+  const { idAgencia, isSuperadmin } = useUserRole();
 
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
   const [editing, setEditing] = useState<Ruta | null>(null);
@@ -27,6 +17,8 @@ export default function RutasPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [terminals, setTerminals] = useState<Terminal[]>([]);
   const [agencias, setAgencias] = useState<Agencia[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const params = !isSuperadmin && idAgencia ? { idAgencia } as Record<string, string> : undefined;
@@ -57,19 +49,43 @@ export default function RutasPage() {
   }
 
   async function handleSave() {
+    if (isSuperadmin && !form.idAgencia) {
+      toast.error('Selecciona una agencia.');
+      return;
+    }
+    if (!form.idTerminalOrigen || !form.idTerminalDestino) {
+      toast.error('Selecciona terminal de origen y destino.');
+      return;
+    }
+    if (form.idTerminalOrigen === form.idTerminalDestino) {
+      toast.error('El terminal de origen y destino no pueden ser el mismo.');
+      return;
+    }
+    const tarifaBase = parseFloat(form.tarifaBase);
+    if (isNaN(tarifaBase) || tarifaBase <= 0) {
+      toast.error('Ingresa una tarifa base válida.');
+      return;
+    }
     const payload = {
       idAgencia: form.idAgencia,
       idTerminalOrigen: form.idTerminalOrigen,
       idTerminalDestino: form.idTerminalDestino,
-      tarifaBase: parseFloat(form.tarifaBase) || 0,
+      tarifaBase,
     };
-    if (modal === 'create') {
-      await rutaRepository.create(payload);
-    } else if (modal === 'edit' && editing) {
-      await rutaRepository.update(editing.id, payload);
+    setSubmitting(true);
+    try {
+      if (modal === 'create') {
+        await rutaRepository.create(payload);
+      } else if (modal === 'edit' && editing) {
+        await rutaRepository.update(editing.id, payload);
+      }
+      setModal(null);
+      setRefreshKey((k) => k + 1);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al guardar la ruta');
+    } finally {
+      setSubmitting(false);
     }
-    setModal(null);
-    window.location.reload();
   }
 
   function confirmDelete(id: string) {
@@ -78,9 +94,16 @@ export default function RutasPage() {
 
   async function handleDelete() {
     if (!deleteId) return;
-    await rutaRepository.delete(deleteId);
-    setDeleteId(null);
-    window.location.reload();
+    setSubmitting(true);
+    try {
+      await rutaRepository.delete(deleteId);
+      setDeleteId(null);
+      setRefreshKey((k) => k + 1);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al eliminar la ruta');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -94,7 +117,7 @@ export default function RutasPage() {
         </div>
         <Button onClick={openCreate}>Nueva Ruta</Button>
       </div>
-      <RutasTable onEdit={openEdit} onDelete={confirmDelete} />
+      <RutasTable key={refreshKey} onEdit={openEdit} onDelete={confirmDelete} />
 
       {modal && (
         <Dialog open onOpenChange={(o) => { if (!o) setModal(null); }}>
@@ -150,7 +173,9 @@ export default function RutasPage() {
               </div>
             </div>
             <DialogFooter showCloseButton>
-              <Button onClick={handleSave}>Guardar</Button>
+              <Button onClick={handleSave} disabled={submitting}>
+                {submitting ? 'Guardando...' : 'Guardar'}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -164,7 +189,9 @@ export default function RutasPage() {
             </DialogHeader>
             <p className="text-sm text-muted-foreground">¿Estás seguro de eliminar esta ruta?</p>
             <DialogFooter showCloseButton>
-              <Button variant="destructive" onClick={handleDelete}>Eliminar</Button>
+              <Button variant="destructive" onClick={handleDelete} disabled={submitting}>
+                {submitting ? 'Eliminando...' : 'Eliminar'}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

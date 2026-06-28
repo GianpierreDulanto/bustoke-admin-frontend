@@ -1,18 +1,25 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button/button';
 import { ViajeTableLevel } from '@/features/drilldown/components/viaje-table-level';
-import { getRutaById, getTerminalById } from '@/infrastructure/mock/data';
+import { rutaRepository } from '@/infrastructure/repositories';
 import { ArrowLeft } from 'lucide-react';
+import type { Ruta } from '@/infrastructure/domain/types';
 
 export default function ViajesRutaPage() {
   const params = useParams<{ id: string; rutaId: string }>();
-  const ruta = getRutaById(params.rutaId);
-  const origen = ruta ? getTerminalById(ruta.idTerminalOrigen)?.nombre ?? '' : '';
-  const destino = ruta ? getTerminalById(ruta.idTerminalDestino)?.nombre ?? '' : '';
-  const rutaLabel = ruta ? `${origen} → ${destino}` : 'Cargando...';
+  const [ruta, setRuta] = useState<Ruta | null>(null);
+
+  useEffect(() => {
+    rutaRepository.getById(params.rutaId).then(setRuta).catch(console.error);
+  }, [params.rutaId]);
+
+  const rutaLabel = ruta
+    ? `${ruta.terminalOrigenNombre ?? ruta.idTerminalOrigen} → ${ruta.terminalDestinoNombre ?? ruta.idTerminalDestino}`
+    : 'Cargando...';
 
   return (
     <div className="space-y-6">

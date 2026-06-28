@@ -1,23 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useUserRole } from '@/hooks';
 import { SoporteTable } from '@/features/soporte/components';
 import { soporteRepository } from '@/infrastructure/repositories';
 import type { TicketSoporte } from '@/infrastructure/domain/types';
 
 export default function SoportePage() {
-  const { data: session } = useSession();
-  const token = session?.user?.accessToken;
-  let role: string | undefined;
-  let idAgencia: string | undefined;
-  if (token) {
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      role = payload.rol;
-      idAgencia = String(payload.id_agencia);
-    } catch {}
-  }
+  const { role, idAgencia } = useUserRole();
 
   const [data, setData] = useState<TicketSoporte[]>([]);
   const [isLoading, setIsLoading] = useState(true);

@@ -5,7 +5,7 @@ import { Badge, Button, Table, TableBody, TableCell, TableHead, TableHeader, Tab
 import { DollarSign, Clock, TrendingUp, CheckCircle } from 'lucide-react';
 import { liquidacionRepository } from '@/infrastructure/repositories';
 import type { Liquidacion } from '@/infrastructure/domain/types';
-import { useSession } from 'next-auth/react';
+import { useUserRole } from '@/hooks';
 
 const ESTADO_VARIANT: Record<string, 'warning' | 'success' | 'danger' | 'neutral'> = {
   pendiente: 'warning',
@@ -15,21 +15,11 @@ const ESTADO_VARIANT: Record<string, 'warning' | 'success' | 'danger' | 'neutral
 };
 
 export default function ComisionesPage() {
-  const { data: session } = useSession();
+  const { isSuperadmin: isSuperAdmin } = useUserRole();
   const [data, setData] = useState<Liquidacion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
-
-  const role = session?.user?.role ?? (() => {
-    try {
-      const token = session?.user?.accessToken;
-      if (!token) return undefined;
-      const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-      return JSON.parse(atob(b64)).rol;
-    } catch { return undefined; }
-  })();
-  const isSuperAdmin = role === 'superadmin';
 
   useEffect(() => {
     liquidacionRepository.list()
@@ -56,8 +46,10 @@ export default function ComisionesPage() {
   const totalPagado = data
     .filter((l) => l.estadoPago === 'completado')
     .reduce((sum, l) => sum + Number(l.comisionPlataforma), 0);
-  const tasaPromedio = data.length > 0
-    ? (data.reduce((sum, l) => sum + (Number(l.comisionPlataforma) / Number(l.montoVentas) * 100), 0) / data.length).toFixed(1)
+  const totalVentas = data.reduce((sum, l) => sum + Number(l.montoVentas), 0);
+  const totalComisiones = data.reduce((sum, l) => sum + Number(l.comisionPlataforma), 0);
+  const tasaPromedio = totalVentas > 0
+    ? ((totalComisiones / totalVentas) * 100).toFixed(1)
     : '0.0';
 
   if (loading) return <div className="p-6 text-muted-foreground">Cargando comisiones...</div>;
@@ -152,7 +144,7 @@ export default function ComisionesPage() {
             ))}
             {data.length === 0 && (
               <TableRow>
-                <TableCell colSpan={isSuperAdmin ? 8 : 6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={isSuperAdmin ? 7 : 6} className="text-center py-8 text-muted-foreground">
                   No hay liquidaciones registradas.
                 </TableCell>
               </TableRow>

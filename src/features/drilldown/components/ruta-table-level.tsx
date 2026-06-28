@@ -13,7 +13,6 @@ import {
 import { SearchIcon, XIcon, ArrowRight, Pencil, Eye } from 'lucide-react';
 import type { Ruta } from '@/infrastructure/domain/types';
 import type { ColumnDef } from '@tanstack/react-table';
-import { getTerminalById } from '@/infrastructure/mock/data';
 
 export function RutaTableLevel({
   agencyId,
@@ -52,18 +51,16 @@ export function RutaTableLevel({
       {
         id: 'origen',
         header: 'Origen',
-        cell: ({ row }) => {
-          const t = getTerminalById(row.original.idTerminalOrigen);
-          return <span className="font-medium">{t?.nombre ?? row.original.idTerminalOrigen}</span>;
-        },
+        cell: ({ row }) => (
+          <span className="font-medium">{row.original.terminalOrigenNombre ?? row.original.idTerminalOrigen}</span>
+        ),
       },
       {
         id: 'destino',
         header: 'Destino',
-        cell: ({ row }) => {
-          const t = getTerminalById(row.original.idTerminalDestino);
-          return <span>{t?.nombre ?? row.original.idTerminalDestino}</span>;
-        },
+        cell: ({ row }) => (
+          <span>{row.original.terminalDestinoNombre ?? row.original.idTerminalDestino}</span>
+        ),
       },
       {
         accessorKey: 'tarifaBase',
@@ -115,8 +112,8 @@ export function RutaTableLevel({
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-neutral-200 bg-white shadow-sm">
-        <div className="flex flex-wrap gap-3 p-4 border-b border-neutral-100">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 p-4 border-b border-neutral-100">
+          <div className="relative w-full sm:flex-1 sm:max-w-sm">
             <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400" />
             <Input
               placeholder="Buscar por origen o destino..."

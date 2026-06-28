@@ -213,7 +213,7 @@ export const authOptions: NextAuthOptions = {
         const accessToken = token?.accessToken as string | undefined;
 
         if (refreshToken) {
-          await fetch(`${ENV_URL_API}/api${authEndpoints.logoutSession}`, {
+          await fetch(`${ENV_URL_API}${authEndpoints.logoutSession}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ refreshToken }),
@@ -223,7 +223,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         if (accessToken) {
-          await fetch(`${ENV_URL_API}/api${authEndpoints.logout}`, {
+          await fetch(`${ENV_URL_API}${authEndpoints.logout}`, {
             method: 'POST',
             headers: { Authorization: `Bearer ${accessToken}` },
             cache: 'no-store',

@@ -4,10 +4,8 @@ import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { Armchair, Bus, Sofa, Crown, Lock, Unlock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge/badge';
-import { Button } from '@/components/ui/button/button';
-import { getViajeById, getBusById, getBoletosByViajeId } from '@/infrastructure/mock/data';
-import { asientoRepository } from '@/infrastructure/repositories';
-import type { Asiento } from '@/infrastructure/domain/types';
+import { asientoRepository, boletoRepository, busRepository, viajeRepository } from '@/infrastructure/repositories';
+import type { Asiento, Boleto, Bus as BusType, Viaje } from '@/infrastructure/domain/types';
 
 const tipoServicioIcon: Record<string, typeof Armchair> = {
   normal: Sofa,
@@ -77,25 +75,38 @@ function SeatCard({ asiento, row, col, asientosOcupados, onToggle }: { asiento: 
 
 export default function AsientosViajePage() {
   const params = useParams<{ id: string }>();
+  const [viaje, setViaje] = useState<Viaje | null>(null);
+  const [bus, setBus] = useState<BusType | null>(null);
+  const [boletos, setBoletos] = useState<Boleto[]>([]);
   const [asientos, setAsientos] = useState<Asiento[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const viaje = getViajeById(params.id);
-  const bus = viaje ? getBusById(viaje.idBus) : undefined;
-  const boletos = viaje ? getBoletosByViajeId(viaje.id) : [];
   const asientosOcupados = new Set(boletos.map(b => b.idAsiento));
 
   useEffect(() => {
-    if (!bus) {
-      setLoading(false);
-      return;
-    }
-    asientoRepository.listByBus(bus.id)
-      .then(setAsientos)
-      .catch((e) => setError(e instanceof Error ? e.message : 'Error al cargar asientos'))
-      .finally(() => setLoading(false));
-  }, [bus?.id]);
+    (async () => {
+      try {
+        const v = await viajeRepository.getById(params.id);
+        if (!v) { setLoading(false); return; }
+        setViaje(v);
+        const [b, bts] = await Promise.all([
+          busRepository.getById(v.idBus),
+          boletoRepository.getByViaje(v.id),
+        ]);
+        setBus(b);
+        setBoletos(bts);
+        if (b) {
+          const asts = await asientoRepository.listByBus(b.id);
+          setAsientos(asts);
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Error al cargar asientos');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [params.id]);
 
   async function handleToggle(asiento: Asiento) {
     const nuevoEstado = !asiento.bloqueadoManual;

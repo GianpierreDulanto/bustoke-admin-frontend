@@ -107,8 +107,8 @@ export function FlotaTableLevel({
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-neutral-200 bg-white shadow-sm">
-        <div className="flex flex-wrap gap-3 p-4 border-b border-neutral-100">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 p-4 border-b border-neutral-100">
+          <div className="relative w-full sm:flex-1 sm:max-w-sm">
             <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400" />
             <Input
               placeholder="Buscar por placa..."

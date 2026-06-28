@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useUserRole } from '@/hooks';
 import { ArrowLeft, Send, User } from 'lucide-react';
 import { Badge, Button } from '@/components/ui';
 import { Textarea } from '@/components/ui/textarea/textarea';
@@ -18,14 +18,8 @@ const ESTADO_VARIANT: Record<string, 'warning' | 'info' | 'success'> = {
 export default function ReclamoDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const { data: session } = useSession();
-  const currentUserId = (() => {
-    try {
-      return Number(JSON.parse(atob((session?.user?.accessToken ?? '').split('.')[1])).sub);
-    } catch {
-      return 1;
-    }
-  })();
+  const { userId } = useUserRole();
+  const currentUserId = userId ? Number(userId) : 1;
   const [reclamo, setReclamo] = useState<Reclamo | null>(null);
   const [mensajes, setMensajes] = useState<MensajeReclamo[]>([]);
   const [userEmails, setUserEmails] = useState<Record<string, string>>({});

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button/button';
@@ -9,8 +9,8 @@ import { Label } from '@/components/ui/label/label';
 import { Separator } from '@/components/ui/separator/separator';
 import { ArrowLeft, Save } from 'lucide-react';
 import { toast } from 'sonner';
-import { getViajeById, getRutaById, getTerminalById, getBusById } from '@/infrastructure/mock/data';
-import type { EstadoViaje } from '@/infrastructure/domain/types';
+import { busRepository, rutaRepository, viajeRepository } from '@/infrastructure/repositories';
+import type { Bus, EstadoViaje, Ruta, Viaje } from '@/infrastructure/domain/types';
 
 const estados: { value: EstadoViaje; label: string }[] = [
   { value: 'programado', label: 'Programado' },
@@ -22,10 +22,57 @@ const estados: { value: EstadoViaje; label: string }[] = [
 export default function EditarViajePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const viaje = getViajeById(params.id);
 
-  const [estado, setEstado] = useState<EstadoViaje>(viaje?.estado ?? 'programado');
+  const [viaje, setViaje] = useState<Viaje | null>(null);
+  const [bus, setBus] = useState<Bus | null>(null);
+  const [ruta, setRuta] = useState<Ruta | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [fechaHora, setFechaHora] = useState('');
+  const [rampaEmbarque, setRampaEmbarque] = useState('');
+  const [estado, setEstado] = useState<EstadoViaje>('programado');
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const v = await viajeRepository.getById(params.id);
+        if (!v) { setLoading(false); return; }
+        setViaje(v);
+        setFechaHora(v.fechaHoraSalida.slice(0, 16));
+        setRampaEmbarque(v.rampaEmbarque);
+        setEstado(v.estado);
+        const [b, r] = await Promise.all([
+          busRepository.getById(v.idBus),
+          rutaRepository.getById(v.idRuta),
+        ]);
+        setBus(b);
+        setRuta(r);
+      } catch {}
+      setLoading(false);
+    })();
+  }, [params.id]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!viaje) return;
+    setSubmitting(true);
+    try {
+      await viajeRepository.update(viaje.id, {
+        fechaHoraSalida: new Date(fechaHora).toISOString(),
+        rampaEmbarque,
+        estado,
+      });
+      toast.success('Viaje actualizado correctamente');
+      router.push(`/viajes/${params.id}`);
+    } catch {
+      toast.error('Error al actualizar el viaje');
+    }
+    setSubmitting(false);
+  }
+
+  if (loading) {
+    return <div className="p-6 text-center text-muted-foreground">Cargando...</div>;
+  }
 
   if (!viaje) {
     return (
@@ -34,22 +81,6 @@ export default function EditarViajePage() {
       </div>
     );
   }
-
-  const bus = getBusById(viaje.idBus);
-  const ruta = getRutaById(viaje.idRuta);
-  const terminalOrigen = ruta ? getTerminalById(ruta.idTerminalOrigen) : null;
-  const terminalDestino = ruta ? getTerminalById(ruta.idTerminalDestino) : null;
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setTimeout(() => {
-      toast.success('Viaje actualizado correctamente');
-      router.push(`/viajes/${params.id}`);
-    }, 600);
-  };
-
-  const fechaLocal = viaje.fechaHoraSalida.slice(0, 16);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -71,12 +102,12 @@ export default function EditarViajePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="fechaHora">Fecha y hora de salida</Label>
-              <Input id="fechaHora" type="datetime-local" defaultValue={fechaLocal} />
+              <Input id="fechaHora" type="datetime-local" value={fechaHora} onChange={(e) => setFechaHora(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Ruta</Label>
               <p className="text-sm text-neutral-700">
-                {terminalOrigen?.nombre ?? '?'} → {terminalDestino?.nombre ?? '?'}
+                {ruta?.terminalOrigenNombre ?? ruta?.idTerminalOrigen ?? '?'} → {ruta?.terminalDestinoNombre ?? ruta?.idTerminalDestino ?? '?'}
               </p>
             </div>
           </div>
@@ -92,7 +123,7 @@ export default function EditarViajePage() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="rampa">Rampa de embarque</Label>
-            <Input id="rampa" defaultValue={viaje.rampaEmbarque} />
+            <Input id="rampa" value={rampaEmbarque} onChange={(e) => setRampaEmbarque(e.target.value)} />
           </div>
         </div>
 

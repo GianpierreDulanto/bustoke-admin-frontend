@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Badge, Button } from '@/components/ui';
 import { ArrowLeft, Building2, Banknote, Bus, Route, CalendarCheck, Edit } from 'lucide-react';
-import { agenciaRepository, busRepository, rutaRepository, viajeRepository } from '@/infrastructure/repositories';
+import { agenciaRepository, busRepository, rutaRepository, viajeRepository, asientoRepository } from '@/infrastructure/repositories';
 import type { Agencia, Bus as BusType, Ruta, Viaje } from '@/infrastructure/domain/types';
 
 const estadoVariant: Record<string, 'success' | 'danger'> = {
@@ -28,6 +28,7 @@ export default function AgenciaDetailPage() {
   const [buses, setBuses] = useState<BusType[]>([]);
   const [rutas, setRutas] = useState<Ruta[]>([]);
   const [viajes, setViajes] = useState<Viaje[]>([]);
+  const [seatCounts, setSeatCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -45,6 +46,11 @@ export default function AgenciaDetailPage() {
         setBuses(bb);
         setRutas(rr);
         setViajes(vv);
+
+        const counts = await Promise.all(
+          bb.map((bus) => asientoRepository.listByBus(bus.id).then((a) => [bus.id, a.length] as const).catch(() => [bus.id, 0] as const))
+        );
+        setSeatCounts(Object.fromEntries(counts));
       } catch (e) {
         console.error(e);
       } finally {
@@ -160,7 +166,7 @@ export default function AgenciaDetailPage() {
                 <tr key={bus.id} className="border-b border-neutral-100 last:border-0 hover:bg-neutral-50/50 transition-colors">
                   <td className="px-6 py-3 font-medium text-neutral-900">{bus.placa}</td>
                   <td className="px-6 py-3 text-neutral-600">{bus.cantidadPisos}</td>
-                  <td className="px-6 py-3 text-neutral-600">{bus.cantidadPisos * 40}</td>
+                  <td className="px-6 py-3 text-neutral-600">{seatCounts[bus.id] ?? '—'}</td>
                 </tr>
               ))}
             </tbody>

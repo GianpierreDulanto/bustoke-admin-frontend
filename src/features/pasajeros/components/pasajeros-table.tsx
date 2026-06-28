@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useUserRole } from '@/hooks';
 import { Input, Spinner } from '@/components/ui';
 import { SearchIcon, User } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table/data-table';
@@ -11,7 +11,7 @@ import { pasajerosColumns } from './pasajeros-columns';
 import { DataTableEmpty } from '@/components/ui/data-table/data-table-empty';
 
 export function PasajerosTable() {
-  const { data: session } = useSession();
+  const { role, idAgencia } = useUserRole();
   const [data, setData] = useState<Pasajero[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,16 +23,7 @@ export function PasajerosTable() {
       setIsLoading(true);
       setError(null);
       try {
-        const token = session?.user?.accessToken;
-        let params: Record<string, string> | undefined;
-        if (token) {
-          const payload = JSON.parse(atob(token.split('.')[1]));
-          const rol = payload.rol;
-          const idAgencia = payload.id_agencia;
-          if (rol === 'admin_agencia' && idAgencia) {
-            params = { id_agencia: String(idAgencia) };
-          }
-        }
+        const params = role === 'admin_agencia' && idAgencia ? { id_agencia: idAgencia } : undefined;
         const result = await pasajeroRepository.list(params);
         if (!cancelled) setData(result);
       } catch (err) {
@@ -43,7 +34,7 @@ export function PasajerosTable() {
     }
     load();
     return () => { cancelled = true; };
-  }, [session]);
+  }, [role, idAgencia]);
 
   const f = useMemo(() => {
     if (!s) return data;

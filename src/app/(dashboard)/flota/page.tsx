@@ -1,30 +1,22 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { toast } from 'sonner';
+import { useUserRole } from '@/hooks';
 import { FlotaTable } from '@/features/flota/components';
 import { busRepository, agenciaRepository } from '@/infrastructure/repositories';
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Input } from '@/components/ui';
 import type { Agencia } from '@/infrastructure/domain/types';
 
 export default function FlotaPage() {
-  const { data: session } = useSession();
-  const token = session?.user?.accessToken;
-  let role: string | undefined;
-  let idAgencia: string | undefined;
-  if (token) {
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      role = payload.rol;
-      idAgencia = String(payload.id_agencia);
-    } catch {}
-  }
-  const isSuperadmin = role === 'superadmin';
+  const { idAgencia, isSuperadmin } = useUserRole();
 
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({ idAgencia: '', placa: '', cantidadPisos: '1' });
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [agencias, setAgencias] = useState<Agencia[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (isSuperadmin) agenciaRepository.list().then(setAgencias);
@@ -40,13 +32,24 @@ export default function FlotaPage() {
   }
 
   async function handleCreate() {
-    await busRepository.create({
-      idAgencia: form.idAgencia,
-      placa: form.placa,
-      cantidadPisos: parseInt(form.cantidadPisos) || 1,
-    });
-    setModal(false);
-    window.location.reload();
+    if (!form.idAgencia || !form.placa.trim()) {
+      toast.error('Completa la agencia y la placa.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await busRepository.create({
+        idAgencia: form.idAgencia,
+        placa: form.placa.trim(),
+        cantidadPisos: parseInt(form.cantidadPisos) || 1,
+      });
+      setModal(false);
+      setRefreshKey((k) => k + 1);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al crear el bus');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   function confirmDelete(id: string) {
@@ -55,9 +58,16 @@ export default function FlotaPage() {
 
   async function handleDelete() {
     if (!deleteId) return;
-    await busRepository.delete(deleteId);
-    setDeleteId(null);
-    window.location.reload();
+    setSubmitting(true);
+    try {
+      await busRepository.delete(deleteId);
+      setDeleteId(null);
+      setRefreshKey((k) => k + 1);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al eliminar el bus');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -71,7 +81,7 @@ export default function FlotaPage() {
         </div>
         <Button onClick={openCreate}>Nuevo Bus</Button>
       </div>
-      <FlotaTable onDelete={confirmDelete} />
+      <FlotaTable key={refreshKey} onDelete={confirmDelete} />
 
       {modal && (
         <Dialog open onOpenChange={(o) => { if (!o) setModal(false); }}>
@@ -105,7 +115,9 @@ export default function FlotaPage() {
               </div>
             </div>
             <DialogFooter showCloseButton>
-              <Button onClick={handleCreate}>Guardar</Button>
+              <Button onClick={handleCreate} disabled={submitting}>
+                {submitting ? 'Guardando...' : 'Guardar'}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -119,7 +131,9 @@ export default function FlotaPage() {
             </DialogHeader>
             <p className="text-sm text-muted-foreground">¿Estás seguro de eliminar este bus?</p>
             <DialogFooter showCloseButton>
-              <Button variant="destructive" onClick={handleDelete}>Eliminar</Button>
+              <Button variant="destructive" onClick={handleDelete} disabled={submitting}>
+                {submitting ? 'Eliminando...' : 'Eliminar'}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

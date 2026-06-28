@@ -7,7 +7,7 @@ import {
 } from 'recharts';
 import {
   MapPin, Bus, Route, Map, Users, CircleDollarSign,
-  ArrowUpRight, Clock, AlertTriangle, AlertCircle, Info, Building2,
+  ArrowUpRight, Clock, AlertTriangle, AlertCircle, Info, Building2, ServerCrash,
 } from 'lucide-react';
 import {
   Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -58,6 +58,7 @@ export default function AdminDashboard() {
   const { data: session, status } = useSession();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -66,12 +67,16 @@ export default function AdminDashboard() {
       setLoading(false);
       return;
     }
+    setError(null);
     fetch('/api/admin/dashboard/', {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); })
       .then(setData)
-      .catch(() => setData(null))
+      .catch((e) => {
+        setData(null);
+        setError(e instanceof Error ? e.message : 'Error desconocido');
+      })
       .finally(() => setLoading(false));
   }, [session, status]);
 
@@ -83,6 +88,26 @@ export default function AdminDashboard() {
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="h-32 bg-neutral-100 rounded-xl animate-pulse" />
           ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6 p-4 md:p-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">Panel de Administracion</h1>
+          <p className="mt-1 text-sm text-neutral-500">Resumen general del sistema de transporte</p>
+        </div>
+        <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-5 text-red-700">
+          <ServerCrash className="size-5 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold">No se pudo cargar el panel de administración</p>
+            <p className="mt-1 text-xs text-red-600">
+              El servidor respondió con un error ({error}). Esto no significa que no haya datos: el servicio de métricas no está disponible en este momento. Intenta recargar la página en unos minutos.
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -135,6 +160,11 @@ export default function AdminDashboard() {
         <div className="rounded-xl border border-neutral-200/60 bg-white p-5 shadow-sm">
           <h2 className="mb-1 text-base font-semibold text-neutral-900">Viajes por mes</h2>
           <p className="mb-4 text-xs text-neutral-500">Evolucion mensual de viajes realizados</p>
+          {monthlyTrips.length === 0 ? (
+            <div className="flex h-72 items-center justify-center text-sm text-muted-foreground">
+              Sin datos de viajes disponibles
+            </div>
+          ) : (
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={monthlyTrips} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
@@ -152,6 +182,7 @@ export default function AdminDashboard() {
               </AreaChart>
             </ResponsiveContainer>
           </div>
+          )}
         </div>
 
         <div className="rounded-xl border border-neutral-200/60 bg-white p-5 shadow-sm">

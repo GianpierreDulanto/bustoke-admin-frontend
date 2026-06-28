@@ -69,8 +69,8 @@ export function RutasTable({ onEdit, onDelete }: Props) {
   return (
     <>
       <div className="rounded-xl border border-neutral-200 bg-white shadow-sm">
-        <div className="flex flex-wrap gap-3 p-4 border-b border-neutral-100">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 p-4 border-b border-neutral-100">
+          <div className="relative w-full sm:flex-1 sm:max-w-sm">
             <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400" />
             <Input placeholder="Buscar por origen o destino..." className="pl-9 border-neutral-200 bg-neutral-50/50 focus:bg-white" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>

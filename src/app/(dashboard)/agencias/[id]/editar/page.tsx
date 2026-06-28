@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button/button';
@@ -9,8 +9,8 @@ import { Label } from '@/components/ui/label/label';
 import { Separator } from '@/components/ui/separator/separator';
 import { ArrowLeft, Save } from 'lucide-react';
 import { toast } from 'sonner';
-import { getAgenciaById } from '@/infrastructure/mock/data';
-import type { EstadoAgencia } from '@/infrastructure/domain/types';
+import { agenciaRepository } from '@/infrastructure/repositories';
+import type { Agencia, EstadoAgencia } from '@/infrastructure/domain/types';
 
 const estados: { value: EstadoAgencia; label: string }[] = [
   { value: 'activa', label: 'Activa' },
@@ -20,10 +20,58 @@ const estados: { value: EstadoAgencia; label: string }[] = [
 export default function EditarAgenciaPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const agencia = getAgenciaById(params.id);
 
-  const [estado, setEstado] = useState<EstadoAgencia>(agencia?.estado ?? 'activa');
+  const [agencia, setAgencia] = useState<Agencia | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [razonSocial, setRazonSocial] = useState('');
+  const [ruc, setRuc] = useState('');
+  const [bancoNombre, setBancoNombre] = useState('');
+  const [numeroCuenta, setNumeroCuenta] = useState('');
+  const [cuentaCci, setCuentaCci] = useState('');
+  const [estado, setEstado] = useState<EstadoAgencia>('activa');
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const a = await agenciaRepository.getById(params.id);
+        if (!a) { setLoading(false); return; }
+        setAgencia(a);
+        setRazonSocial(a.razonSocial);
+        setRuc(a.ruc);
+        setBancoNombre(a.bancoNombre ?? '');
+        setNumeroCuenta(a.numeroCuenta ?? '');
+        setCuentaCci(a.cuentaCci ?? '');
+        setEstado(a.estado);
+      } catch {}
+      setLoading(false);
+    })();
+  }, [params.id]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!agencia) return;
+    setSubmitting(true);
+    try {
+      await agenciaRepository.update(agencia.id, {
+        razonSocial,
+        ruc,
+        bancoNombre: bancoNombre || null,
+        numeroCuenta: numeroCuenta || null,
+        cuentaCci: cuentaCci || null,
+        estado,
+      });
+      toast.success('Agencia actualizada correctamente');
+      router.push(`/agencias/${params.id}`);
+    } catch {
+      toast.error('Error al actualizar la agencia');
+    }
+    setSubmitting(false);
+  }
+
+  if (loading) {
+    return <div className="p-6 text-center text-muted-foreground">Cargando...</div>;
+  }
 
   if (!agencia) {
     return (
@@ -32,15 +80,6 @@ export default function EditarAgenciaPage() {
       </div>
     );
   }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setTimeout(() => {
-      toast.success('Agencia actualizada correctamente');
-      router.push(`/agencias/${params.id}`);
-    }, 600);
-  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -62,11 +101,11 @@ export default function EditarAgenciaPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="razonSocial">Razón Social</Label>
-              <Input id="razonSocial" defaultValue={agencia.razonSocial} />
+              <Input id="razonSocial" value={razonSocial} onChange={(e) => setRazonSocial(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="ruc">RUC</Label>
-              <Input id="ruc" defaultValue={agencia.ruc} />
+              <Input id="ruc" value={ruc} onChange={(e) => setRuc(e.target.value)} />
             </div>
           </div>
         </div>
@@ -78,15 +117,15 @@ export default function EditarAgenciaPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="banco">Banco</Label>
-              <Input id="banco" defaultValue={agencia.bancoNombre ?? ''} />
+              <Input id="banco" value={bancoNombre} onChange={(e) => setBancoNombre(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="numeroCuenta">N° Cuenta</Label>
-              <Input id="numeroCuenta" defaultValue={agencia.numeroCuenta ?? ''} />
+              <Input id="numeroCuenta" value={numeroCuenta} onChange={(e) => setNumeroCuenta(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="cuentaCci">CCI</Label>
-              <Input id="cuentaCci" defaultValue={agencia.cuentaCci ?? ''} />
+              <Input id="cuentaCci" value={cuentaCci} onChange={(e) => setCuentaCci(e.target.value)} />
             </div>
           </div>
         </div>

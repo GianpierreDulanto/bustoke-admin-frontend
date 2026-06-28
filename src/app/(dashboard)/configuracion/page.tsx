@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import {
   Badge,
   Button,
@@ -19,9 +20,20 @@ import {
   TabsTrigger,
 } from '@/components/ui';
 import { Copy, Key, Trash2 } from 'lucide-react';
-import { MOCK_API_KEYS, getAgenciaById } from '@/infrastructure/mock/data';
+import { agenciaRepository, apiKeyRepository } from '@/infrastructure/repositories';
+import type { Agencia, ApiKey } from '@/infrastructure/domain/types';
 
 export default function ConfiguracionPage() {
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+  const [agencias, setAgencias] = useState<Agencia[]>([]);
+
+  useEffect(() => {
+    apiKeyRepository.list().then(setApiKeys).catch(() => setApiKeys([]));
+    agenciaRepository.list().then(setAgencias).catch(() => setAgencias([]));
+  }, []);
+
+  const agenciasMap = useMemo(() => new Map(agencias.map((a) => [a.id, a])), [agencias]);
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-6">
@@ -142,9 +154,9 @@ export default function ConfiguracionPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {MOCK_API_KEYS.map((k) => (
+                {apiKeys.map((k) => (
                   <TableRow key={k.id}>
-                    <TableCell className="font-medium text-neutral-900">{getAgenciaById(k.idAgencia)?.razonSocial ?? k.idAgencia}</TableCell>
+                    <TableCell className="font-medium text-neutral-900">{agenciasMap.get(k.idAgencia)?.razonSocial ?? k.idAgencia}</TableCell>
                     <TableCell>
                       <code className="text-xs bg-neutral-100 px-2 py-1 rounded">{k.token.slice(0, 16)}...</code>
                     </TableCell>

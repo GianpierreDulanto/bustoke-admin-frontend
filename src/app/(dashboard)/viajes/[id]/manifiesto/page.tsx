@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { FileSpreadsheet, Download, Printer } from 'lucide-react';
 import { Badge } from '@/components/ui/badge/badge';
 import { Button } from '@/components/ui/button/button';
 import { Skeleton } from '@/components/ui';
-import { viajeRepository, rutaRepository, busRepository, terminalRepository, boletoRepository, pasajeroRepository, asientoRepository } from '@/infrastructure/repositories';
-import type { Viaje, Ruta, Bus, Terminal } from '@/infrastructure/domain/types';
+import { viajeRepository, rutaRepository, busRepository, terminalRepository, boletoRepository, pasajeroRepository, asientoRepository, agenciaRepository } from '@/infrastructure/repositories';
+import type { Agencia, Viaje, Ruta, Bus, Terminal } from '@/infrastructure/domain/types';
 
 const estadoViajeVariant: Record<string, 'info' | 'warning' | 'success' | 'danger'> = {
   programado: 'info',
@@ -25,12 +25,12 @@ const estadoViajeLabel: Record<string, string> = {
 
 export default function ManifiestoViajePage() {
   const params = useParams<{ id: string }>();
-  const printRef = useRef<HTMLDivElement>(null);
   const [viaje, setViaje] = useState<Viaje | null>(null);
   const [ruta, setRuta] = useState<Ruta | null>(null);
   const [bus, setBus] = useState<Bus | null>(null);
   const [terminalOrigen, setTerminalOrigen] = useState<Terminal | null>(null);
   const [terminalDestino, setTerminalDestino] = useState<Terminal | null>(null);
+  const [agencia, setAgencia] = useState<Agencia | null>(null);
   const [pasajerosManifiesto, setPasajerosManifiesto] = useState<{ item: number; nombres: string; documento: string; asiento: string; tipoAsiento: string; boleto: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -47,7 +47,10 @@ export default function ManifiestoViajePage() {
           asientoRepository.listByBus(v.idBus),
         ]);
         if (r) setRuta(r);
-        if (b) setBus(b);
+        if (b) {
+          setBus(b);
+          agenciaRepository.getById(b.idAgencia).then(setAgencia).catch(() => setAgencia(null));
+        }
         if (r) {
           const [tO, tD] = await Promise.all([
             terminalRepository.getById(r.idTerminalOrigen),
@@ -119,8 +122,8 @@ export default function ManifiestoViajePage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-8 gap-y-3 p-5 bg-neutral-50/50 border-b border-neutral-200 text-sm">
             <div>
               <p className="text-xs text-neutral-400 uppercase tracking-wider mb-0.5">Empresa</p>
-              <p className="font-semibold text-neutral-900">Bustoke S.A.C.</p>
-              <p className="text-xs text-neutral-500">RUC: 20609876543</p>
+              <p className="font-semibold text-neutral-900">{agencia?.razonSocial ?? '—'}</p>
+              <p className="text-xs text-neutral-500">RUC: {agencia?.ruc ?? '—'}</p>
             </div>
             <div>
               <p className="text-xs text-neutral-400 uppercase tracking-wider mb-0.5">Ruta</p>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useUserRole } from '@/hooks';
 import {
   Badge, Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, Input, Label,
@@ -11,7 +11,6 @@ import { apiKeyRepository, agenciaRepository } from '@/infrastructure/repositori
 import type { ApiKey, Agencia } from '@/infrastructure/domain/types';
 
 export default function ApiKeysPage() {
-  const { data: session } = useSession();
   const [data, setData] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -22,17 +21,7 @@ export default function ApiKeysPage() {
   const [submitting, setSubmitting] = useState(false);
   const [createdToken, setCreatedToken] = useState<string | null>(null);
 
-  const token = session?.user?.accessToken as string | undefined;
-  let role: string | undefined;
-  let idAgencia: string | undefined;
-  if (token) {
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      role = payload.rol;
-      idAgencia = String(payload.id_agencia);
-    } catch {}
-  }
-  const isSuperadmin = role === 'superadmin';
+  const { role, idAgencia, isSuperadmin, isLoading: sessionLoading } = useUserRole();
 
   function fetch() {
     setLoading(true);
@@ -44,9 +33,9 @@ export default function ApiKeysPage() {
   }
 
   useEffect(() => {
-    if (!session) return;
+    if (sessionLoading) return;
     fetch();
-  }, [session]);
+  }, [sessionLoading, role, idAgencia]);
 
   useEffect(() => {
     if (!isSuperadmin || !dialogOpen) return;

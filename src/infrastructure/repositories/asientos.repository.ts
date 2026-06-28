@@ -1,4 +1,4 @@
-import type { Asiento } from '@/infrastructure/domain/types';
+import type { Asiento, TipoServicio } from '@/infrastructure/domain/types';
 
 const API = '/api';
 
@@ -16,11 +16,29 @@ export class AsientoRepository {
     return request<Asiento[]>(`/admin/flota/buses/${busId}/asientos`);
   }
 
-  async update(id: string, data: { bloqueadoManual?: boolean }): Promise<Asiento> {
+  async update(id: string, data: { bloqueadoManual?: boolean; tipoServicio?: TipoServicio }): Promise<Asiento> {
     return request<Asiento>(`/admin/flota/asientos/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
+  }
+
+  async create(busId: string, data: Partial<Asiento>): Promise<Asiento> {
+    return request<Asiento>(`/admin/flota/buses/${busId}/asientos`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async delete(id: string): Promise<boolean> {
+    await request<void>(`/admin/flota/asientos/${id}`, { method: 'DELETE' });
+    return true;
+  }
+
+  async replaceTemplate(busId: string, asientos: Partial<Asiento>[]): Promise<Asiento[]> {
+    const existentes = await this.listByBus(busId);
+    await Promise.all(existentes.map((a) => this.delete(a.id)));
+    return Promise.all(asientos.map((a) => this.create(busId, a)));
   }
 }
 

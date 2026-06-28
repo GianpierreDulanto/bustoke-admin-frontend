@@ -23,6 +23,7 @@ export default function ViajesPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [editingViaje, setEditingViaje] = useState<Viaje | null>(null);
   const [deletingViaje, setDeletingViaje] = useState<Viaje | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const handleEdit = useCallback((v: Viaje) => {
     setEditingViaje(v);
@@ -36,7 +37,7 @@ export default function ViajesPage() {
 
   const handleSave = useCallback(() => {
     setDialogOpen(false);
-    window.location.reload();
+    setRefreshKey((k) => k + 1);
   }, []);
 
   const handleDeleteConfirm = useCallback(async () => {
@@ -44,7 +45,7 @@ export default function ViajesPage() {
     try {
       await viajeRepository.delete(deletingViaje.id);
       setDeleteOpen(false);
-      window.location.reload();
+      setRefreshKey((k) => k + 1);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Error al eliminar viaje');
     }
@@ -63,7 +64,7 @@ export default function ViajesPage() {
           <PlusIcon className="size-4 mr-1" /> Nuevo Viaje
         </Button>
       </div>
-      <ViajesTable onEdit={handleEdit} onDelete={handleDeleteRequest} />
+      <ViajesTable key={refreshKey} onEdit={handleEdit} onDelete={handleDeleteRequest} />
       <ViajeDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}

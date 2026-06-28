@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useUserRole } from '@/hooks';
 import Link from 'next/link';
 import { useAgencias } from '../application/use-entity-data';
 import {
@@ -30,12 +30,7 @@ const estadoVariant: Record<string, 'success' | 'danger' | 'warning' | 'neutral'
 };
 
 export function AgenciaTableLevel() {
-  const { data: session } = useSession();
-  const isSuperadmin = (() => {
-    try {
-      return JSON.parse(atob((session?.user?.accessToken ?? '').split('.')[1])).rol === 'superadmin';
-    } catch { return false; }
-  })();
+  const { isSuperadmin } = useUserRole();
 
   const [search, setSearch] = useState('');
   const { data, isLoading, error, refetch } = useAgencias();
@@ -150,8 +145,8 @@ export function AgenciaTableLevel() {
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-neutral-200 bg-white shadow-sm">
-        <div className="flex flex-wrap gap-3 p-4 border-b border-neutral-100">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 p-4 border-b border-neutral-100">
+          <div className="relative w-full sm:flex-1 sm:max-w-sm">
             <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400" />
             <Input
               placeholder="Buscar por RUC o razón social..."

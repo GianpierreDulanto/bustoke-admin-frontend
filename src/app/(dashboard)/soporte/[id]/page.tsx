@@ -21,16 +21,15 @@ export default function SoporteDetailPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
-      soporteRepository.getById(params.id),
-      fetch(`/api/admin/soporte/${params.id}/historial`).then((r) => r.json()),
-    ])
-      .then(([t, h]) => {
-        setTicket(t);
-        setHistorial(h);
-      })
+    soporteRepository.getById(params.id)
+      .then(setTicket)
       .catch(console.error)
       .finally(() => setLoading(false));
+
+    fetch(`/api/admin/soporte/${params.id}/historial`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setHistorial)
+      .catch(() => setHistorial([]));
   }, [params.id]);
 
   if (loading) return <div className="p-6 text-muted-foreground">Cargando ticket...</div>;

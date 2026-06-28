@@ -72,8 +72,9 @@ function TableHead({ className, ...props }: React.ComponentProps<'th'>) {
   return (
     <th
       data-slot="table-head"
+      title={typeof props.children === 'string' ? props.children : undefined}
       className={cn(
-        'bg-neutral-50/80 h-11 px-4 max-lg:px-4 text-xs text-neutral-500 text-left align-middle font-semibold whitespace-nowrap tracking-wide uppercase [&:has([role=checkbox])]:pr-0 *:[[role=checkbox]]:translate-y-0.5',
+        'bg-neutral-50/80 h-11 px-4 max-lg:px-4 text-xs text-neutral-500 text-left align-middle font-semibold whitespace-nowrap overflow-hidden text-ellipsis tracking-wide uppercase [&:has([role=checkbox])]:pr-0 *:[[role=checkbox]]:translate-y-0.5',
         className
       )}
       {...props}
@@ -85,8 +86,9 @@ function TableCell({ className, ...props }: React.ComponentProps<'td'>) {
   return (
     <td
       data-slot="table-cell"
+      title={typeof props.children === 'string' ? props.children : undefined}
       className={cn(
-        'text-neutral-600 text-sm px-4 max-lg:px-4 py-3 max-lg:py-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0 *:[[role=checkbox]]:translate-y-0.5',
+        'text-neutral-600 text-sm px-4 max-lg:px-4 py-3 max-lg:py-2 align-middle whitespace-nowrap overflow-hidden text-ellipsis [&:has([role=checkbox])]:pr-0 *:[[role=checkbox]]:translate-y-0.5',
         className
       )}
       {...props}

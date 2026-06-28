@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useViajes } from '../application/use-entity-data';
 import {
@@ -12,8 +12,8 @@ import {
   Skeleton,
 } from '@/components/ui';
 import { SearchIcon, XIcon, Calendar, BusIcon, ArrowRight, Eye } from 'lucide-react';
-import { getBusById } from '@/infrastructure/mock/data';
-import type { Viaje } from '@/infrastructure/domain/types';
+import { busRepository } from '@/infrastructure/repositories';
+import type { Bus, Viaje } from '@/infrastructure/domain/types';
 import type { ColumnDef } from '@tanstack/react-table';
 
 const estadoVariant: Record<string, 'info' | 'warning' | 'success' | 'danger'> = {
@@ -32,6 +32,13 @@ export function ViajeTableLevel({
 }) {
   const [search, setSearch] = useState('');
   const { data, isLoading, error } = useViajes({ idRuta: rutaId });
+  const [buses, setBuses] = useState<Bus[]>([]);
+
+  useEffect(() => {
+    busRepository.list().then(setBuses).catch(() => setBuses([]));
+  }, []);
+
+  const busesMap = useMemo(() => new Map(buses.map((b) => [b.id, b])), [buses]);
 
   const filtered = useMemo(() => {
     const byRuta = data.filter((v) => v.idRuta === rutaId);
@@ -71,7 +78,7 @@ export function ViajeTableLevel({
         id: 'bus',
         header: 'Bus',
         cell: ({ row }) => {
-          const bus = getBusById(row.original.idBus);
+          const bus = busesMap.get(row.original.idBus);
           return bus ? (
             <span className="flex items-center gap-2">
               <BusIcon className="size-4 text-muted-foreground shrink-0" />
@@ -107,7 +114,7 @@ export function ViajeTableLevel({
         ),
       },
     ],
-    []
+    [busesMap]
   );
 
   if (isLoading) {
@@ -133,8 +140,8 @@ export function ViajeTableLevel({
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-neutral-200 bg-white shadow-sm">
-        <div className="flex flex-wrap gap-3 p-4 border-b border-neutral-100">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 p-4 border-b border-neutral-100">
+          <div className="relative w-full sm:flex-1 sm:max-w-sm">
             <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400" />
             <Input
               placeholder="Buscar viajes..."

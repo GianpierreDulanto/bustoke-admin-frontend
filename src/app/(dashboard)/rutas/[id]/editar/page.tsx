@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button/button';
@@ -9,14 +9,50 @@ import { Label } from '@/components/ui/label/label';
 import { Separator } from '@/components/ui/separator/separator';
 import { ArrowLeft, Save } from 'lucide-react';
 import { toast } from 'sonner';
-import { getRutaById, getTerminalById, getAgenciaById } from '@/infrastructure/mock/data';
+import { agenciaRepository, rutaRepository } from '@/infrastructure/repositories';
+import type { Agencia, Ruta } from '@/infrastructure/domain/types';
 
 export default function EditarRutaPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const ruta = getRutaById(params.id);
 
+  const [ruta, setRuta] = useState<Ruta | null>(null);
+  const [agencia, setAgencia] = useState<Agencia | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [tarifaBase, setTarifaBase] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await rutaRepository.getById(params.id);
+        if (!r) { setLoading(false); return; }
+        setRuta(r);
+        setTarifaBase(String(r.tarifaBase));
+        const a = await agenciaRepository.getById(r.idAgencia);
+        setAgencia(a);
+      } catch {}
+      setLoading(false);
+    })();
+  }, [params.id]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!ruta) return;
+    setSubmitting(true);
+    try {
+      await rutaRepository.update(ruta.id, { tarifaBase: parseFloat(tarifaBase) || 0 });
+      toast.success('Ruta actualizada correctamente');
+      router.push(`/rutas/${params.id}`);
+    } catch {
+      toast.error('Error al actualizar la ruta');
+    }
+    setSubmitting(false);
+  }
+
+  if (loading) {
+    return <div className="p-6 text-center text-muted-foreground">Cargando...</div>;
+  }
 
   if (!ruta) {
     return (
@@ -25,19 +61,6 @@ export default function EditarRutaPage() {
       </div>
     );
   }
-
-  const agencia = getAgenciaById(ruta.idAgencia);
-  const terminalOrigen = getTerminalById(ruta.idTerminalOrigen);
-  const terminalDestino = getTerminalById(ruta.idTerminalDestino);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setTimeout(() => {
-      toast.success('Ruta actualizada correctamente');
-      router.push(`/rutas/${params.id}`);
-    }, 600);
-  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -59,11 +82,11 @@ export default function EditarRutaPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Terminal Origen</Label>
-              <p className="text-sm text-neutral-700">{terminalOrigen?.nombre ?? ruta.idTerminalOrigen}</p>
+              <p className="text-sm text-neutral-700">{ruta.terminalOrigenNombre ?? ruta.idTerminalOrigen}</p>
             </div>
             <div className="space-y-2">
               <Label>Terminal Destino</Label>
-              <p className="text-sm text-neutral-700">{terminalDestino?.nombre ?? ruta.idTerminalDestino}</p>
+              <p className="text-sm text-neutral-700">{ruta.terminalDestinoNombre ?? ruta.idTerminalDestino}</p>
             </div>
           </div>
         </div>
@@ -75,7 +98,7 @@ export default function EditarRutaPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="tarifaBase">Tarifa Base (S/)</Label>
-              <Input id="tarifaBase" type="number" step="0.01" defaultValue={String(ruta.tarifaBase)} />
+              <Input id="tarifaBase" type="number" step="0.01" value={tarifaBase} onChange={(e) => setTarifaBase(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Agencia</Label>

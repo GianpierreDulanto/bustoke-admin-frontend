@@ -1,4 +1,4 @@
-import type { Terminal, AgenciaTerminal } from '@/infrastructure/domain/types';
+import type { Terminal } from '@/infrastructure/domain/types';
 
 const API = '/api';
 
@@ -45,28 +45,4 @@ export class TerminalRepository {
   }
 }
 
-export class AgenciaTerminalRepository {
-  async list(params?: Record<string, string>): Promise<AgenciaTerminal[]> {
-    const query = params ? '?' + new URLSearchParams(params).toString() : '';
-    return request<AgenciaTerminal[]>(`/admin/agencias-terminales${query}`);
-  }
-
-  async findByAgencia(agenciaId: string): Promise<AgenciaTerminal[]> {
-    return request<AgenciaTerminal[]>(`/admin/agencias-terminales?idAgencia=${agenciaId}`);
-  }
-
-  async create(data: Partial<AgenciaTerminal>): Promise<AgenciaTerminal> {
-    return request<AgenciaTerminal>('/admin/agencias-terminales', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  async delete(id: string): Promise<boolean> {
-    await request<void>(`/admin/agencias-terminales/${id}`, { method: 'DELETE' });
-    return true;
-  }
-}
-
 export const terminalRepository = new TerminalRepository();
-export const agenciaTerminalRepository = new AgenciaTerminalRepository();

@@ -1,15 +1,21 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button/button';
 import { RutaTableLevel } from '@/features/drilldown/components/ruta-table-level';
-import { getAgenciaById } from '@/infrastructure/mock/data';
+import { agenciaRepository } from '@/infrastructure/repositories';
 import { ArrowLeft } from 'lucide-react';
+import type { Agencia } from '@/infrastructure/domain/types';
 
 export default function RutasAgenciaPage() {
   const params = useParams<{ id: string }>();
-  const agencia = getAgenciaById(params.id);
+  const [agencia, setAgencia] = useState<Agencia | null>(null);
+
+  useEffect(() => {
+    agenciaRepository.getById(params.id).then(setAgencia).catch(console.error);
+  }, [params.id]);
 
   return (
     <div className="space-y-6">

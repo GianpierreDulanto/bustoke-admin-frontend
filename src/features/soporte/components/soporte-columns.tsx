@@ -10,9 +10,10 @@ import { soporteRepository } from '@/infrastructure/repositories';
 interface ColumnProps {
   isSuperadmin: boolean;
   onDelete: (id: string) => void;
+  onRefresh: () => void;
 }
 
-export function useSoporteColumns({ isSuperadmin, onDelete }: ColumnProps): ColumnDef<TicketSoporte>[] {
+export function useSoporteColumns({ isSuperadmin, onDelete, onRefresh }: ColumnProps): ColumnDef<TicketSoporte>[] {
   return [
     {
       accessorKey: 'asunto',
@@ -37,7 +38,7 @@ export function useSoporteColumns({ isSuperadmin, onDelete }: ColumnProps): Colu
         }
         const handleChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
           await soporteRepository.update(row.original.id, { estado: e.target.value as EstadoTicketSoporte });
-          window.location.reload();
+          onRefresh();
         };
         return (
           <select className="text-xs rounded border border-neutral-300 px-1 py-0.5 bg-white" defaultValue={current} onChange={handleChange}>

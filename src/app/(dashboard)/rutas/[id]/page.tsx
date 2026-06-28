@@ -6,9 +6,8 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button/button';
 import { Input } from '@/components/ui/input/input';
 import { ArrowLeft, Route, CalendarCheck, ArrowRight, Building2, Plus, Pencil, Trash2, X, Check } from 'lucide-react';
-import { getRutaById, getTerminalById, getAgenciaById, getViajesByRutaId } from '@/infrastructure/mock/data';
-import { tarifaRepository } from '@/infrastructure/repositories';
-import type { TarifaRuta } from '@/infrastructure/domain/types';
+import { agenciaRepository, rutaRepository, tarifaRepository, viajeRepository } from '@/infrastructure/repositories';
+import type { Agencia, Ruta, TarifaRuta } from '@/infrastructure/domain/types';
 
 function InfoRow({ label, value }: { label: string; value: string | React.ReactNode }) {
   return (
@@ -21,7 +20,10 @@ function InfoRow({ label, value }: { label: string; value: string | React.ReactN
 
 export default function RutaDetailPage() {
   const params = useParams<{ id: string }>();
-  const ruta = getRutaById(params.id);
+  const [ruta, setRuta] = useState<Ruta | null>(null);
+  const [agencia, setAgencia] = useState<Agencia | null>(null);
+  const [viajesCount, setViajesCount] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   const [tarifas, setTarifas] = useState<TarifaRuta[]>([]);
   const [loadingTarifas, setLoadingTarifas] = useState(true);
@@ -30,6 +32,26 @@ export default function RutaDetailPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [newTipo, setNewTipo] = useState<'normal' | 'vip'>('normal');
   const [newPrecio, setNewPrecio] = useState('');
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await rutaRepository.getById(params.id);
+        if (!r) { setLoading(false); return; }
+        setRuta(r);
+        const [a, viajes] = await Promise.all([
+          agenciaRepository.getById(r.idAgencia),
+          viajeRepository.findByRuta(params.id),
+        ]);
+        setAgencia(a);
+        setViajesCount(viajes.length);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [params.id]);
 
   useEffect(() => {
     tarifaRepository.listByRuta(params.id)
@@ -60,6 +82,10 @@ export default function RutaDetailPage() {
     setNewPrecio('');
   }
 
+  if (loading) {
+    return <div className="p-6 text-center text-muted-foreground">Cargando...</div>;
+  }
+
   if (!ruta) {
     return (
       <div className="p-6 text-center text-muted-foreground">
@@ -67,11 +93,6 @@ export default function RutaDetailPage() {
       </div>
     );
   }
-
-  const agencia = getAgenciaById(ruta.idAgencia);
-  const terminalOrigen = getTerminalById(ruta.idTerminalOrigen);
-  const terminalDestino = getTerminalById(ruta.idTerminalDestino);
-  const viajesCount = getViajesByRutaId(params.id).length;
 
   return (
     <div className="space-y-6">
@@ -84,7 +105,7 @@ export default function RutaDetailPage() {
           </Button>
           <div>
             <h1 className="text-xl font-bold text-neutral-900 tracking-tight">
-              {terminalOrigen?.nombre ?? '?'} → {terminalDestino?.nombre ?? '?'}
+              {ruta.terminalOrigenNombre ?? ruta.idTerminalOrigen} → {ruta.terminalDestinoNombre ?? ruta.idTerminalDestino}
             </h1>
             <p className="text-sm text-muted-foreground">Detalle de ruta</p>
           </div>
@@ -106,8 +127,8 @@ export default function RutaDetailPage() {
               </span>
             }
           />
-          <InfoRow label="Origen" value={terminalOrigen?.nombre ?? ruta.idTerminalOrigen} />
-          <InfoRow label="Destino" value={terminalDestino?.nombre ?? ruta.idTerminalDestino} />
+          <InfoRow label="Origen" value={ruta.terminalOrigenNombre ?? ruta.idTerminalOrigen} />
+          <InfoRow label="Destino" value={ruta.terminalDestinoNombre ?? ruta.idTerminalDestino} />
           <InfoRow label="Tarifa Base" value={`S/ ${Number(ruta.tarifaBase).toFixed(2)}`} />
         </div>
 

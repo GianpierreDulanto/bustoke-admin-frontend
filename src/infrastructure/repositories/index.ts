@@ -7,7 +7,6 @@ export { ViajeRepository, viajeRepository } from './viajes.repository';
 export { BoletoRepository, boletoRepository } from './boletos.repository';
 export { PasajeroRepository, pasajeroRepository } from './pasajeros.repository';
 export { AgenciaTerminalRepository, agenciaTerminalRepository } from './agenciasterminales.repository';
-export { MockRepository } from '@/infrastructure/mock/data';
 export { SuscripcionRepository, suscripcionRepository } from './suscripciones.repository';
 export { ReclamoRepository, reclamoRepository } from './reclamos.repository';
 export { SoporteRepository, soporteRepository } from './soporte.repository';

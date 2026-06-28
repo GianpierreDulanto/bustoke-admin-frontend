@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
-import { useSession } from 'next-auth/react';
+import { useUserRole } from '@/hooks';
 import {
   Dialog,
   DialogContent,
@@ -31,18 +31,7 @@ type Props = {
 };
 
 export function ViajeDialog({ open, onOpenChange, viaje, onSave }: Props) {
-  const { data: session } = useSession();
-  const token = session?.user?.accessToken;
-  let role: string | undefined;
-  let idAgencia: string | undefined;
-  if (token) {
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      role = payload.rol;
-      idAgencia = String(payload.id_agencia);
-    } catch {}
-  }
-  const isAdminAgencia = role === 'admin_agencia';
+  const { idAgencia, isAdminAgencia } = useUserRole();
 
   const [idRuta, setIdRuta] = useState('');
   const [origenId, setOrigenId] = useState('');
@@ -117,7 +106,7 @@ export function ViajeDialog({ open, onOpenChange, viaje, onSave }: Props) {
       setDestinoId(ruta ? String(ruta.idTerminalDestino) : '');
       setIdRuta(viaje.idRuta);
       setIdBus(viaje.idBus);
-      setIdChofer('');
+      setIdChofer(viaje.idChofer ?? '');
       setFechaHoraSalida(viaje.fechaHoraSalida);
       setFechaHoraLlegada(viaje.fechaHoraLlegada);
       setEstado(viaje.estado);
@@ -170,7 +159,7 @@ export function ViajeDialog({ open, onOpenChange, viaje, onSave }: Props) {
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="origen">Terminal Origen</Label>
               <select
@@ -209,7 +198,7 @@ export function ViajeDialog({ open, onOpenChange, viaje, onSave }: Props) {
               Tarifa base: S/ {Number(rutaSeleccionada.tarifaBase).toFixed(2)}
             </div>
           )}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="idBus">Bus</Label>
               <select
@@ -241,7 +230,7 @@ export function ViajeDialog({ open, onOpenChange, viaje, onSave }: Props) {
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="fechaHoraSalida">Salida</Label>
               <Input id="fechaHoraSalida" type="datetime-local" value={fechaHoraSalida} onChange={(e) => setFechaHoraSalida(e.target.value)} />
@@ -251,7 +240,7 @@ export function ViajeDialog({ open, onOpenChange, viaje, onSave }: Props) {
               <Input id="fechaHoraLlegada" type="datetime-local" value={fechaHoraLlegada} onChange={(e) => setFechaHoraLlegada(e.target.value)} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="estado">Estado</Label>
               <select

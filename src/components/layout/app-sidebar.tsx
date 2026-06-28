@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
-import { useSession } from 'next-auth/react';
+import { useUserRole } from '@/hooks';
 import {
   Sidebar,
   SidebarContent,
@@ -35,16 +35,7 @@ function filterItems(allItems: NavItem[], keys: string[]): NavItem[] {
 }
 
 export function AppSidebar() {
-  const { data: session } = useSession();
-  const role = session?.user?.role ?? (() => {
-    try {
-      const token = session?.user?.accessToken;
-      if (!token) return undefined;
-      const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-      return JSON.parse(atob(b64)).rol;
-    } catch { return undefined; }
-  })();
-  const isAdminAgencia = role === 'admin_agencia';
+  const { isAdminAgencia } = useUserRole();
 
   const sectionMap = useMemo(() => {
     if (!isAdminAgencia) return ALL_SECTIONS;
