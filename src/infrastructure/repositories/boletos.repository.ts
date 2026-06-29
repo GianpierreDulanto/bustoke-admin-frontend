@@ -43,6 +43,13 @@ export class BoletoRepository {
     await request<void>(`/admin/boletos/${id}`, { method: 'DELETE' });
     return true;
   }
+
+  async checkIn(id: string, estadoCheckin: string): Promise<Boleto> {
+    return request<Boleto>(`/admin/viajes/boletos/${id}/check-in`, {
+      method: 'PUT',
+      body: JSON.stringify({ estadoCheckin }),
+    });
+  }
 }
 
 export const boletoRepository = new BoletoRepository();

@@ -77,13 +77,15 @@ export default function CheckinViajePage() {
         setRows(boletos.map((b) => {
           const p = pMap.get(b.idPasajero);
           const a = aMap.get(b.idAsiento);
+          const rawEstado = b.estadoCheckin || 'pendiente';
+          const estado = (rawEstado === 'abordado' || rawEstado === 'no_show' ? rawEstado : 'pendiente') as CheckInStatus;
           return {
             id: b.id,
             pasajero: p ? `${p.nombres} ${p.apellidoPaterno} ${p.apellidoMaterno}` : '—',
             documento: p?.numeroDocumento ?? '—',
             asientoNumero: a?.numeroAsiento ?? '—',
             tipoAsiento: a?.tipoServicio ?? '—',
-            estado: 'pendiente' as CheckInStatus,
+            estado,
           };
         }));
       } catch {} finally {
@@ -117,19 +119,27 @@ export default function CheckinViajePage() {
     return { total, pendiente, abordado, noShow };
   }, [rows]);
 
-  function handleCheckIn(id: string) {
-    setRows((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, estado: 'abordado' as const } : r))
-    );
+  async function handleCheckIn(id: string) {
+    try {
+      await boletoRepository.checkIn(id, 'abordado');
+      setRows((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, estado: 'abordado' as const } : r))
+      );
+    } catch {}
   }
 
-  function handleNoShow(id: string) {
-    setRows((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, estado: 'no_show' as const } : r))
-    );
+  async function handleNoShow(id: string) {
+    try {
+      await boletoRepository.checkIn(id, 'no_show');
+      setRows((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, estado: 'no_show' as const } : r))
+      );
+    } catch {}
   }
 
-  function handleMarkAllAbordado() {
+  async function handleMarkAllAbordado() {
+    const pendientes = rows.filter((r) => r.estado === 'pendiente');
+    await Promise.allSettled(pendientes.map((r) => boletoRepository.checkIn(r.id, 'abordado')));
     setRows((prev) =>
       prev.map((r) => (r.estado === 'pendiente' ? { ...r, estado: 'abordado' as const } : r))
     );
