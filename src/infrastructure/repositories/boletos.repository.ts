@@ -50,6 +50,13 @@ export class BoletoRepository {
       body: JSON.stringify({ estadoCheckin }),
     });
   }
+
+  async scanByQr(viajeId: string, codigoQr: string): Promise<Boleto> {
+    return request<Boleto>(`/admin/viajes/${viajeId}/check-in/scan`, {
+      method: 'POST',
+      body: JSON.stringify({ codigoQr }),
+    });
+  }
 }
 
 export const boletoRepository = new BoletoRepository();

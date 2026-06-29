@@ -77,7 +77,6 @@ export const REPORT_FILTERS: Record<ReportFilterKey, ReportFilterDefinition> = {
     options: [
       { value: 'app_bustoke', label: 'App Bustoke' },
       { value: 'ventanilla_fisica', label: 'Ventanilla física' },
-      { value: 'api_externa', label: 'API externa' },
     ],
   },
 };

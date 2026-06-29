@@ -2,10 +2,12 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { ClipboardCheck, SearchIcon, QrCode, BadgeCheck, XCircle, UserRoundX, ArrowUpDown } from 'lucide-react';
+import { ClipboardCheck, SearchIcon, QrCode, BadgeCheck, XCircle, UserRoundX, ArrowUpDown, ScanIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge/badge';
 import { Input } from '@/components/ui/input/input';
 import { Button } from '@/components/ui/button/button';
+import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog/dialog';
 import { viajeRepository, rutaRepository, boletoRepository, pasajeroRepository, asientoRepository, terminalRepository } from '@/infrastructure/repositories';
 import type { Viaje, Boleto } from '@/infrastructure/domain/types';
 
@@ -47,6 +49,9 @@ export default function CheckinViajePage() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<CheckInStatus | 'todos'>('todos');
   const [rows, setRows] = useState<CheckInRow[]>([]);
+  const [scanOpen, setScanOpen] = useState(false);
+  const [scanQr, setScanQr] = useState('');
+  const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -145,6 +150,31 @@ export default function CheckinViajePage() {
     );
   }
 
+  async function handleScanQr() {
+    if (!scanQr.trim() || !viaje) return;
+    setScanning(true);
+    try {
+      const boleto = await boletoRepository.scanByQr(viaje.id, scanQr.trim());
+      if (boleto.estadoCheckin === 'abordado') {
+        toast.error('Este boleto ya fue registrado como abordado.');
+        setScanOpen(false);
+        setScanQr('');
+        return;
+      }
+      await boletoRepository.checkIn(boleto.id, 'abordado');
+      setRows((prev) =>
+        prev.map((r) => (r.id === boleto.id ? { ...r, estado: 'abordado' as const } : r))
+      );
+      toast.success(`Abordaje registrado: ${boleto.codigoQr}`);
+      setScanOpen(false);
+      setScanQr('');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Código QR no válido para este viaje.');
+    } finally {
+      setScanning(false);
+    }
+  }
+
   if (loading) return <div className="p-6 text-muted-foreground">Cargando...</div>;
 
   return (
@@ -181,7 +211,7 @@ export default function CheckinViajePage() {
               )}
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" disabled>
+              <Button variant="outline" size="sm" onClick={() => setScanOpen(true)}>
                 <QrCode className="size-4 mr-1.5" />
                 Escanear
               </Button>
@@ -306,6 +336,40 @@ export default function CheckinViajePage() {
           </span>
         </div>
       </div>
+
+      <Dialog open={scanOpen} onOpenChange={setScanOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Escanear código QR</DialogTitle>
+            <DialogDescription>
+              Ingresa o escanea el código QR del boleto para registrar el abordaje.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/30 border border-dashed border-muted-foreground/20">
+              <ScanIcon className="size-8 text-muted-foreground shrink-0" />
+              <p className="text-sm text-muted-foreground">
+                Usa un lector de QR o pega el código directamente en el campo de abajo.
+              </p>
+            </div>
+            <Input
+              placeholder="Código QR del boleto..."
+              value={scanQr}
+              onChange={(e) => setScanQr(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleScanQr(); }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setScanOpen(false); setScanQr(''); }}>
+              Cancelar
+            </Button>
+            <Button onClick={handleScanQr} disabled={!scanQr.trim() || scanning}>
+              {scanning ? 'Buscando...' : 'Registrar abordaje'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
